@@ -5,8 +5,8 @@ import time
 from datetime import datetime
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, ChatMemberUpdated
-from aiogram.filters import Command, CommandStart, ChatMemberUpdatedFilter, KICKED, MEMBER
+from aiogram.types import Message
+from aiogram.filters import Command, CommandStart
 from aiogram.enums import ParseMode, ChatType
 from aiogram.client.default import DefaultBotProperties
 
@@ -34,7 +34,6 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("❌ BOT_TOKEN не установлен в переменных окружения!")
 
-
 bot = Bot(
     token=BOT_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -48,11 +47,18 @@ dp = Dispatcher()
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
-    text = (
-        f"🚗 <b>Добро пожаловать в Audi Club Bot!</b>\n\n"
-        f"Пиши в чат — получай XP, прокачивай уровень и ранг!\n\n"
-        f"Введи /help для списка команд."
-    )
+    if message.chat.type == ChatType.PRIVATE:
+        text = (
+            f"🚗 <b>Привет! Я бот Audi-клуба.</b>\n\n"
+            f"Добавь меня в группу — и я буду начислять XP за активность!\n\n"
+            f"Введи /help для списка команд."
+        )
+    else:
+        text = (
+            f"🚗 <b>Audi Club Bot активирован!</b>\n\n"
+            f"Пишите в чат — получайте XP, прокачивайте уровень и ранг!\n"
+            f"Введи /help для списка команд."
+        )
     await message.answer(text)
 
 
@@ -62,44 +68,47 @@ async def cmd_start(message: Message):
 
 @dp.message(Command("top"))
 async def cmd_top(message: Message):
-    """Показать топ участников чата"""
-    chat_id = message.chat.id
-
     if message.chat.type == ChatType.PRIVATE:
         await message.answer("📊 Эта команда работает только в группах!")
         return
 
-    top_users = get_top_users(chat_id, limit=10)
+    try:
+        chat_id = message.chat.id
+        top_users = get_top_users(chat_id, limit=10)
 
-    if not top_users:
-        await message.answer("😔 Пока никто не набрал XP. Начните общаться!")
-        return
+        if not top_users:
+            await message.answer("😔 Пока никто не набрал XP. Начните общаться!")
+            return
 
-    medals = ["🥇", "🥈", "🥉"]
-    lines = []
+        medals = ["🥇", "🥈", "🥉"]
+        lines = []
 
-    for i, user in enumerate(top_users, start=1):
-        medal = medals[i - 1] if i <= 3 else f"<b>{i}.</b>"
-        name = user.get("full_name") or user.get("username") or "Аноним"
-        xp = user["xp"]
-        level = user["level"]
-        rank = user["rank_title"]
+        for i, user in enumerate(top_users, start=1):
+            medal = medals[i - 1] if i <= 3 else f"<b>{i}.</b>"
+            name = user.get("full_name") or user.get("username") or "Аноним"
+            xp = user["xp"]
+            level = user["level"]
+            rank = user["rank_title"]
 
-        lines.append(
-            f"{medal} <b>{name}</b>\n"
-            f"    ├ Уровень: <b>{level}</b> | {rank}\n"
-            f"    └ XP: <code>{xp:,}</code>"
+            lines.append(
+                f"{medal} <b>{name}</b>\n"
+                f"    ├ Уровень: <b>{level}</b> | {rank}\n"
+                f"    └ XP: <code>{xp:,}</code>"
+            )
+
+        text = (
+            f"🏆 <b>ТОП УЧАСТНИКОВ AUDI-КЛУБА</b>\n"
+            f"{'═' * 28}\n\n"
+            + "\n\n".join(lines)
+            + f"\n\n{'═' * 28}\n"
+            f"💡 <i>Пиши больше — расти быстрее!</i>"
         )
 
-    text = (
-        f"🏆 <b>ТОП УЧАСТНИКОВ AUDI-КЛУБА</b>\n"
-        f"{'═' * 28}\n\n"
-        + "\n\n".join(lines)
-        + f"\n\n{'═' * 28}\n"
-        f"💡 <i>Пиши больше — расти быстрее!</i>"
-    )
+        await message.answer(text)
 
-    await message.answer(text)
+    except Exception as e:
+        logger.error(f"❌ Ошибка в /top: {e}", exc_info=True)
+        await message.answer("⚠️ Произошла ошибка. Попробуй позже.")
 
 
 # ════
@@ -108,80 +117,88 @@ async def cmd_top(message: Message):
 
 @dp.message(Command(commands=["rank", "profile", "stats"]))
 async def cmd_rank(message: Message):
-    """Показать профиль и ранг пользователя"""
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-
     if message.chat.type == ChatType.PRIVATE:
         await message.answer("👤 Эта команда работает только в группах!")
         return
 
-    user = get_user(user_id, chat_id)
-    if not user:
-        await message.answer("❌ Ты ещё не зарегистрирован. Напиши что-нибудь в чат!")
-        return
+    try:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        username = message.from_user.username or ""
+        full_name = message.from_user.full_name or "Аноним"
 
-    progress = xp_progress(user["xp"])
-    bar = make_progress_bar(progress["percent"], length=12)
-    next_rank_info = get_next_rank(progress["level"])
-    name = message.from_user.full_name or "Аноним"
+        # Создаём юзера если его нет в БД
+        user = get_or_create_user(user_id, chat_id, username, full_name)
 
-    # Позиция в топе
-    top = get_top_users(chat_id, limit=1000)
-    position = next((i + 1 for i, u in enumerate(top) if u["user_id"] == user_id), "?")
+        progress = xp_progress(user["xp"])
+        bar = make_progress_bar(progress["percent"], length=12)
+        next_rank_info = get_next_rank(progress["level"])
+        name = message.from_user.full_name or "Аноним"
 
-    text = (
-        f"👤 <b>{name}</b>\n"
-        f"{'━' * 26}\n"
-        f"🏅 Ранг: <b>{user['rank_title']}</b>\n"
-        f"⭐ Уровень: <b>{progress['level']}</b>\n"
-        f"💬 Сообщений: <b>{user['messages']:,}</b>\n"
-        f"🏆 Позиция в топе: <b>#{position}</b>\n"
-        f"{'━' * 26}\n"
-        f"📊 <b>Прогресс до ур. {progress['level'] + 1}:</b>\n"
-        f"{bar} <code>{progress['percent']}%</code>\n"
-        f"XP: <code>{progress['xp_in_level']}</code> / <code>{progress['xp_needed']}</code>\n"
-        f"Всего XP: <code>{user['xp']:,}</code>\n"
-    )
+        # Позиция в топе
+        top = get_top_users(chat_id, limit=1000)
+        position = next((i + 1 for i, u in enumerate(top) if u["user_id"] == user_id), "?")
 
-    if next_rank_info:
-        next_rank_level, next_rank_title = next_rank_info
-        text += (
+        text = (
+            f"👤 <b>{name}</b>\n"
             f"{'━' * 26}\n"
-            f"🎯 Следующий ранг: <b>{next_rank_title}</b>\n"
-            f"   (с {next_rank_level} уровня)"
+            f"🏅 Ранг: <b>{user['rank_title']}</b>\n"
+            f"⭐ Уровень: <b>{progress['level']}</b>\n"
+            f"💬 Сообщений: <b>{user['messages']:,}</b>\n"
+            f"🏆 Позиция в топе: <b>#{position}</b>\n"
+            f"{'━' * 26}\n"
+            f"📊 <b>Прогресс до ур. {progress['level'] + 1}:</b>\n"
+            f"{bar} <code>{progress['percent']}%</code>\n"
+            f"XP: <code>{progress['xp_in_level']}</code> / <code>{progress['xp_needed']}</code>\n"
+            f"Всего XP: <code>{user['xp']:,}</code>\n"
         )
 
-    await message.answer(text)
+        if next_rank_info:
+            next_rank_level, next_rank_title = next_rank_info
+            text += (
+                f"{'━' * 26}\n"
+                f"🎯 Следующий ранг: <b>{next_rank_title}</b>\n"
+                f"   (с {next_rank_level} уровня)"
+            )
+
+        await message.answer(text)
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка в /rank: {e}", exc_info=True)
+        await message.answer("⚠️ Произошла ошибка. Попробуй позже.")
 
 
 # ════
-#   КОМАНДА: /levels — таблица уровней
+#   КОМАНДА: /levels
 # ════
 
 @dp.message(Command("levels"))
 async def cmd_levels(message: Message):
-    """Показать таблицу рангов"""
-    from levels import RANKS, total_xp_for_level
+    try:
+        from levels import RANKS, total_xp_for_level
 
-    lines = []
-    for min_level, rank_title in RANKS:
-        xp_need = total_xp_for_level(min_level)
-        lines.append(
-            f"{rank_title}\n"
-            f"  └ с <b>{min_level}</b> ур. | <code>{xp_need:,}</code> XP"
+        lines = []
+        for min_level, rank_title in RANKS:
+            xp_need = total_xp_for_level(min_level)
+            lines.append(
+                f"{rank_title}\n"
+                f"  └ с <b>{min_level}</b> ур. | <code>{xp_need:,}</code> XP"
+            )
+
+        text = (
+            f"📋 <b>СИСТЕМА РАНГОВ AUDI-КЛУБА</b>\n"
+            f"{'═' * 28}\n\n"
+            + "\n\n".join(lines)
+            + f"\n\n{'═' * 28}\n"
+            f"💡 XP начисляется за сообщения (15-35 XP)\n"
+            f"⏱ Кулдаун между начислениями: 60 сек"
         )
 
-    text = (
-        f"📋 <b>СИСТЕМА РАНГОВ AUDI-КЛУБА</b>\n"
-        f"{'═' * 28}\n\n"
-        + "\n\n".join(lines)
-        + f"\n\n{'═' * 28}\n"
-        f"💡 XP начисляется за сообщения (15-35 XP)\n"
-        f"⏱ Кулдаун между начислениями: 60 сек"
-    )
+        await message.answer(text)
 
-    await message.answer(text)
+    except Exception as e:
+        logger.error(f"❌ Ошибка в /levels: {e}", exc_info=True)
+        await message.answer("⚠️ Произошла ошибка. Попробуй позже.")
 
 
 # ════
@@ -210,7 +227,7 @@ async def cmd_help(message: Message):
 
 
 # ════
-#   XP ЗА КАЖДОЕ СООБЩЕНИЕ (ПОСЛЕ всех команд!)
+#   XP ЗА СООБЩЕНИЯ (ПОСЛЕ всех команд!)
 # ════
 
 @dp.message(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
@@ -219,49 +236,52 @@ async def handle_group_message(message: Message):
     if not message.from_user or message.from_user.is_bot:
         return
 
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-    username = message.from_user.username or ""
-    full_name = message.from_user.full_name or "Аноним"
+    try:
+        user_id = message.from_user.id
+        chat_id = message.chat.id
+        username = message.from_user.username or ""
+        full_name = message.from_user.full_name or "Аноним"
 
-    user = get_or_create_user(user_id, chat_id, username, full_name)
+        user = get_or_create_user(user_id, chat_id, username, full_name)
 
-    now = time.time()
-    if now - user.get("last_xp_at", 0) < XP_COOLDOWN_SECONDS:
-        return
+        now = time.time()
+        if now - user.get("last_xp_at", 0) < XP_COOLDOWN_SECONDS:
+            return
 
-    xp_gain = get_message_xp()
-    add_xp(user_id, chat_id, xp_gain, reason="message")
-    update_last_xp_time(user_id, chat_id, now)
+        xp_gain = get_message_xp()
+        add_xp(user_id, chat_id, xp_gain, reason="message")
+        update_last_xp_time(user_id, chat_id, now)
 
-    updated_user = get_user(user_id, chat_id)
-    new_level = calculate_level(updated_user["xp"])
-    new_rank = get_rank(new_level)
+        updated_user = get_user(user_id, chat_id)
+        new_level = calculate_level(updated_user["xp"])
+        new_rank = get_rank(new_level)
+        old_level = user.get("level", 1)
 
-    old_level = user.get("level", 1)
+        if new_level > old_level:
+            update_user_level_rank(user_id, chat_id, new_level, new_rank)
 
-    if new_level > old_level:
-        update_user_level_rank(user_id, chat_id, new_level, new_rank)
+            name = f'<a href="tg://user?id={user_id}">{full_name}</a>'
+            old_rank = get_rank(old_level)
 
-        name = f'<a href="tg://user?id={user_id}">{full_name}</a>'
-        old_rank = get_rank(old_level)
+            level_up_text = (
+                f"🎉 <b>LEVEL UP!</b>\n\n"
+                f"👤 {name}\n"
+                f"━━━━\n"
+                f"📈 Уровень: <b>{old_level}</b> → <b>{new_level}</b>\n"
+            )
 
-        level_up_text = (
-            f"🎉 <b>LEVEL UP!</b>\n\n"
-            f"👤 {name}\n"
-            f"━━━━\n"
-            f"📈 Уровень: <b>{old_level}</b> → <b>{new_level}</b>\n"
-        )
+            if new_rank != old_rank:
+                level_up_text += f"🏅 Новый ранг: <b>{new_rank}</b>\n"
 
-        if new_rank != old_rank:
-            level_up_text += f"🏅 Новый ранг: <b>{new_rank}</b>\n"
+            level_up_text += f"⭐ Всего XP: <code>{updated_user['xp']}</code>"
 
-        level_up_text += f"⭐ Всего XP: <code>{updated_user['xp']}</code>"
+            await message.reply(level_up_text)
 
-        await message.reply(level_up_text)
+        elif new_rank != user.get("rank_title"):
+            update_user_level_rank(user_id, chat_id, new_level, new_rank)
 
-    elif new_rank != user.get("rank_title"):
-        update_user_level_rank(user_id, chat_id, new_level, new_rank)
+    except Exception as e:
+        logger.error(f"❌ Ошибка при начислении XP: {e}", exc_info=True)
 
 
 # ════

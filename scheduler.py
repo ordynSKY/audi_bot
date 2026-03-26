@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from datetime import datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -9,7 +8,7 @@ from database import get_all_chat_ids, get_weekly_xp, get_user, save_weekly_snap
 
 logger = logging.getLogger(__name__)
 
-TIMEZONE = pytz.timezone("Europe/Moscow")  # Измени под свой часовой пояс
+TIMEZONE = pytz.timezone("Europe/Kyiv")
 
 
 def get_week_start() -> str:
@@ -36,7 +35,6 @@ async def send_weekly_top(bot):
             if not weekly_data:
                 continue
 
-            # Строим топ
             lines = []
             medals = ["🥇", "🥈", "🥉"]
             snapshot_entries = []
@@ -66,13 +64,11 @@ async def send_weekly_top(bot):
             if not lines:
                 continue
 
-            # Форматируем дату недели
             week_start_dt = datetime.strptime(week_start, "%Y-%m-%d %H:%M:%S")
-            week_end_dt = now
 
             text = (
                 f"🏆 <b>ЕЖЕНЕДЕЛЬНЫЙ ТОП AUDI-КЛУБА</b>\n"
-                f"📅 {week_start_dt.strftime('%d.%m')} — {week_end_dt.strftime('%d.%m.%Y')}\n"
+                f"📅 {week_start_dt.strftime('%d.%m')} — {now.strftime('%d.%m.%Y')}\n"
                 f"{'═' * 28}\n\n"
                 + "\n".join(lines)
                 + f"\n\n{'═' * 28}\n"
@@ -80,13 +76,8 @@ async def send_weekly_top(bot):
                 f"🔄 Новая неделя началась! Удачи всем! 🚀"
             )
 
-            await bot.send_message(
-                chat_id=chat_id,
-                text=text,
-                parse_mode="HTML"
-            )
+            await bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
 
-            # Сохраняем снапшот
             if snapshot_entries:
                 save_weekly_snapshot(snapshot_entries)
 
@@ -100,7 +91,6 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
     """Настройка планировщика задач"""
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
 
-    # Еженедельный топ — воскресенье 23:59
     scheduler.add_job(
         func=send_weekly_top,
         trigger=CronTrigger(
@@ -116,5 +106,5 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
         replace_existing=True
     )
 
-    logger.info("✅ Планировщик настроен: еженедельный топ в вс 23:59")
+    logger.info("✅ Планировщик настроен: еженедельный топ в вс 23:59 (Kyiv)")
     return scheduler
