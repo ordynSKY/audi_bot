@@ -3,7 +3,7 @@ import random
 import time
 import datetime
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import Command
 
@@ -84,7 +84,7 @@ async def debug(message: Message):
     print("🔥 MESSAGE:", message.text)
 
 # 👤 профиль
-@dp.message(Command("me"))
+@dp.message(F.text.startswith("/me"))
 async def me(message: Message):
     user = await get_user_full(message.from_user.id)
 
@@ -102,7 +102,7 @@ async def me(message: Message):
     )
 
 # 🏆 топ
-@dp.message(Command("top"))
+@dp.message(F.text.startswith("/top"))
 async def top(message: Message):
     users = await get_top()
 
