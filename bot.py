@@ -41,6 +41,8 @@ def get_rank(xp):
 last_message_time = {}
 
 @dp.message()
+async def debug(message: Message):
+    print("🔥 MESSAGE RECEIVED:", message.chat.id, message.from_user.username, message.text)
 async def handle_message(message: Message):
     if message.chat.type == "private":
         return
