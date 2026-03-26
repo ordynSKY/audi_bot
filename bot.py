@@ -77,6 +77,10 @@ async def handle_message(message: Message):
         await update_rank(user_id, new_rank)
         await message.reply(f"🏎 Новый ранг: {new_rank}")
 
+@dp.message()
+async def debug(message: Message):
+    print("🔥 MESSAGE:", message.text)
+
 # 👤 профиль
 @dp.message(Command("me"))
 async def me(message: Message):
