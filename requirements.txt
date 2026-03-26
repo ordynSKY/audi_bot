@@ -1,3 +1,4 @@
-aiogram
-aiosqlite
-python-dotenv
+aiogram==3.7.0
+apscheduler==3.10.4
+pytz==2024.1
+aiosqlite==0.20.0
