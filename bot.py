@@ -7,7 +7,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import Command
 
-from config import BOT_TOKEN, CHAT_ID
+import os
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 from db import *
 
 bot = Bot(token=BOT_TOKEN)
@@ -122,8 +125,10 @@ async def weekly_task():
             await reset_weekly()
 
 async def main():
+    print("🚀 Бот запускается...")
     await init_db()
     asyncio.create_task(weekly_task())
+    print("✅ Бот запущен, polling...")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
