@@ -22,13 +22,13 @@ from levels import (
 )
 from scheduler import setup_scheduler
 
-# ──────────────────────────────────────────
+# ────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 logger = logging.getLogger(__name__)
-# ──────────────────────────────────────────
+# ────
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
@@ -42,70 +42,23 @@ bot = Bot(
 dp = Dispatcher()
 
 
-# ══════════════════════════════════════════
-#   MIDDLEWARE: XP ЗА КАЖДОЕ СООБЩЕНИЕ
-# ══════════════════════════════════════════
+# ════
+#   КОМАНДА: /start
+# ════
 
-@dp.message(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
-async def handle_group_message(message: Message):
-    """Начисление XP за активность в группе"""
-    if not message.from_user or message.from_user.is_bot:
-        return
-
-    user_id = message.from_user.id
-    chat_id = message.chat.id
-    username = message.from_user.username or ""
-    full_name = message.from_user.full_name or "Аноним"
-
-    # Получаем или создаём пользователя
-    user = get_or_create_user(user_id, chat_id, username, full_name)
-
-    # Кулдаун — XP не чаще раза в минуту
-    now = time.time()
-    if now - user.get("last_xp_at", 0) < XP_COOLDOWN_SECONDS:
-        return
-
-    # Начисляем XP
-    xp_gain = get_message_xp()
-    add_xp(user_id, chat_id, xp_gain, reason="message")
-    update_last_xp_time(user_id, chat_id, now)
-
-    # Проверяем повышение уровня
-    updated_user = get_user(user_id, chat_id)
-    new_level = calculate_level(updated_user["xp"])
-    new_rank = get_rank(new_level)
-
-    old_level = user.get("level", 1)
-
-    if new_level > old_level:
-        update_user_level_rank(user_id, chat_id, new_level, new_rank)
-
-        # Уведомление о повышении уровня
-        name = f'<a href="tg://user?id={user_id}">{full_name}</a>'
-        old_rank = get_rank(old_level)
-
-        level_up_text = (
-            f"🎉 <b>LEVEL UP!</b>\n\n"
-            f"👤 {name}\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📈 Уровень: <b>{old_level}</b> → <b>{new_level}</b>\n"
-        )
-
-        # Если изменился ранг
-        if new_rank != old_rank:
-            level_up_text += f"🏅 Новый ранг: <b>{new_rank}</b>\n"
-
-        level_up_text += f"⭐ Всего XP: <code>{updated_user['xp']}</code>"
-
-        await message.reply(level_up_text)
-
-    elif new_rank != user.get("rank_title"):
-        update_user_level_rank(user_id, chat_id, new_level, new_rank)
+@dp.message(CommandStart())
+async def cmd_start(message: Message):
+    text = (
+        f"🚗 <b>Добро пожаловать в Audi Club Bot!</b>\n\n"
+        f"Пиши в чат — получай XP, прокачивай уровень и ранг!\n\n"
+        f"Введи /help для списка команд."
+    )
+    await message.answer(text)
 
 
-# ══════════════════════════════════════════
+# ════
 #   КОМАНДА: /top
-# ══════════════════════════════════════════
+# ════
 
 @dp.message(Command("top"))
 async def cmd_top(message: Message):
@@ -149,9 +102,9 @@ async def cmd_top(message: Message):
     await message.answer(text)
 
 
-# ══════════════════════════════════════════
+# ════
 #   КОМАНДА: /rank / /profile
-# ══════════════════════════════════════════
+# ════
 
 @dp.message(Command(commands=["rank", "profile", "stats"]))
 async def cmd_rank(message: Message):
@@ -202,9 +155,9 @@ async def cmd_rank(message: Message):
     await message.answer(text)
 
 
-# ══════════════════════════════════════════
+# ════
 #   КОМАНДА: /levels — таблица уровней
-# ══════════════════════════════════════════
+# ════
 
 @dp.message(Command("levels"))
 async def cmd_levels(message: Message):
@@ -231,9 +184,9 @@ async def cmd_levels(message: Message):
     await message.answer(text)
 
 
-# ══════════════════════════════════════════
+# ════
 #   КОМАНДА: /help
-# ══════════════════════════════════════════
+# ════
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
@@ -256,23 +209,75 @@ async def cmd_help(message: Message):
     await message.answer(text)
 
 
-# ══════════════════════════════════════════
+# ════
+#   XP ЗА КАЖДОЕ СООБЩЕНИЕ (ПОСЛЕ всех команд!)
+# ════
+
+@dp.message(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
+async def handle_group_message(message: Message):
+    """Начисление XP за активность в группе"""
+    if not message.from_user or message.from_user.is_bot:
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+    username = message.from_user.username or ""
+    full_name = message.from_user.full_name or "Аноним"
+
+    user = get_or_create_user(user_id, chat_id, username, full_name)
+
+    now = time.time()
+    if now - user.get("last_xp_at", 0) < XP_COOLDOWN_SECONDS:
+        return
+
+    xp_gain = get_message_xp()
+    add_xp(user_id, chat_id, xp_gain, reason="message")
+    update_last_xp_time(user_id, chat_id, now)
+
+    updated_user = get_user(user_id, chat_id)
+    new_level = calculate_level(updated_user["xp"])
+    new_rank = get_rank(new_level)
+
+    old_level = user.get("level", 1)
+
+    if new_level > old_level:
+        update_user_level_rank(user_id, chat_id, new_level, new_rank)
+
+        name = f'<a href="tg://user?id={user_id}">{full_name}</a>'
+        old_rank = get_rank(old_level)
+
+        level_up_text = (
+            f"🎉 <b>LEVEL UP!</b>\n\n"
+            f"👤 {name}\n"
+            f"━━━━\n"
+            f"📈 Уровень: <b>{old_level}</b> → <b>{new_level}</b>\n"
+        )
+
+        if new_rank != old_rank:
+            level_up_text += f"🏅 Новый ранг: <b>{new_rank}</b>\n"
+
+        level_up_text += f"⭐ Всего XP: <code>{updated_user['xp']}</code>"
+
+        await message.reply(level_up_text)
+
+    elif new_rank != user.get("rank_title"):
+        update_user_level_rank(user_id, chat_id, new_level, new_rank)
+
+
+# ════
 #   СТАРТ БОТА
-# ══════════════════════════════════════════
+# ════
 
 async def main():
     logger.info("🚀 Запуск Audi Club Bot...")
 
-    # Инициализация БД
     init_db()
     logger.info("✅ База данных инициализирована")
 
-    # Настройка планировщика
     scheduler = setup_scheduler(bot)
     scheduler.start()
     logger.info("✅ Планировщик запущен")
 
-    # Запуск бота
     logger.info("✅ Бот запущен и ожидает сообщений...")
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
