@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 import time
 from datetime import datetime
 
@@ -22,6 +23,22 @@ from levels import (
     XP_COOLDOWN_SECONDS
 )
 from scheduler import setup_scheduler, get_current_weekly_top
+
+import re
+
+BMW_PATTERN = re.compile(
+    r'\b(bmw|бмв|бэмвэ|бэха|бумер|бимер|бэмэвэ|bmv)\b',
+    re.IGNORECASE
+)
+
+BMW_RESPONSES = [
+    "Е, алло! Тут Audi-клуб, про таке не говорять 🙅‍♂️",
+    "Ти знаєш, що ти в Audi-чаті? 😤",
+    "А чи можна без цих слів? Тут діти... і ауді 🫣",
+    "Сказав би я тобі, але мене перепрограмують... 🤖",
+    "Ауді – це релігія. А ти тут з хернею 😡",
+    "404: марку не знайдено. Спробуй Audi ✅",
+]
 
 # ────
 logging.basicConfig(
@@ -295,12 +312,19 @@ async def cmd_help(message: Message):
 #   XP ЗА СООБЩЕНИЯ (ПОСЛЕ всех команд!)
 # ════════════════════════════════════
 
+
+
 @dp.message(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
 async def handle_group_message(message: Message):
     if not message.from_user or message.from_user.is_bot:
         return
 
     try:
+        # --- BMW фильтр ---
+        if message.text and BMW_PATTERN.search(message.text):
+            response = random.choice(BMW_RESPONSES)
+            await message.reply(response)
+        
         user_id = message.from_user.id
         chat_id = message.chat.id
         username = message.from_user.username or ""
