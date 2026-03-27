@@ -13,7 +13,7 @@ from aiogram.enums import ParseMode, ChatType
 from aiogram.client.default import DefaultBotProperties
 
 from database import (
-    init_db, get_or_create_user, add_xp, get_user, is_first_message_in_chat_today, mark_first_message_in_chat,
+    init_db, get_or_create_user, add_xp, get_user,
     update_user_level_rank, update_last_xp_time,
     get_top_users, update_streak
 )
@@ -382,13 +382,11 @@ async def handle_group_message(message: Message):
         add_xp(user_id, chat_id, total_xp, reason=detail)
         update_last_xp_time(user_id, chat_id, now)
 
-# ── Уведомление: первое сообщение в чате за день ──
-        if is_first_today and is_first_message_in_chat_today(chat_id, today_str):
-            mark_first_message_in_chat(chat_id, today_str, user_id)
+# ── Уведомление о первом сообщении дня ──
+        if is_first_today and streak > 1:
             bonus_text = (
-                f"🌅 <b>Перше повідомлення дня в чаті!</b>\n"
-                f"👤 {full_name} відкриває новий день! 🏁\n"
-                f"🔥 Стрик: <b>{streak} дн.</b>\n"
+                f"🌅 <b>Перше повідомлення дня!</b>\n"
+                f"🔥 Стрик: <b>{streak} дн.</b> (+{streak_bonus} XP бонус)\n"
                 f"⭐ +{total_xp} XP"
             )
             await message.reply(bonus_text)

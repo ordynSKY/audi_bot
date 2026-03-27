@@ -89,14 +89,6 @@ def init_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_chat_xp ON users(chat_id, xp DESC)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_xp_log_chat_date ON xp_log(chat_id, created_at)")
 
-    conn.execute("""
-    CREATE TABLE IF NOT EXISTS daily_first (
-        chat_id INTEGER,
-        date TEXT,
-        user_id INTEGER,
-        PRIMARY KEY (chat_id, date)
-        )
-    """)
 
     conn.commit()
     conn.close()
@@ -317,19 +309,3 @@ def get_all_chats() -> list[int]:
     
     
 
-def is_first_message_in_chat_today(chat_id: int, today_str: str) -> bool:
-    """Проверяет, было ли уже первое сообщение в чате сегодня."""
-    with sqlite3.connect(DB_PATH) as conn:
-        row = conn.execute(
-            "SELECT 1 FROM daily_first WHERE chat_id = ? AND date = ?",
-            (chat_id, today_str)
-        ).fetchone()
-        return row is None
-
-def mark_first_message_in_chat(chat_id: int, today_str: str, user_id: int):
-    """Отмечает первое сообщение дня в чате."""
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            "INSERT OR IGNORE INTO daily_first (chat_id, date, user_id) VALUES (?, ?, ?)",
-            (chat_id, today_str, user_id)
-        )    
