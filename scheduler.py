@@ -80,12 +80,12 @@ def _build_weekly_top_text(chat_id: int, week_start: str, now: datetime, save: b
     week_start_dt = datetime.strptime(week_start, "%Y-%m-%d %H:%M:%S")
 
     text = (
-        f"🏆 <b>ЕЖЕНЕДЕЛЬНЫЙ ТОП AUDI-КЛУБА</b>\n"
+        f"🏆 <b>ЩОТИЖНЕВИЙ ТОП AUDI-КЛУБУ</b>\n"
         f"📅 {week_start_dt.strftime('%d.%m')} — {now.strftime('%d.%m.%Y')}\n"
         f"{'═' * 28}\n\n"
         + "\n".join(lines)
         + f"\n\n{'═' * 28}\n"
-        f"💬 Участников в топе: <b>{len(lines)}</b>\n"
+        f"💬 Учасників в топі: <b>{len(lines)}</b>\n"
     )
 
     return text, snapshot_entries
@@ -105,7 +105,7 @@ async def send_weekly_top(bot):
             if not text:
                 continue
 
-            text += "🔄 Новая неделя началась! Удачи всем! 🚀"
+            text += "🔄 Новий тиждень розпочався! Успіхів усім! 🚀"
 
             await bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
 
@@ -124,7 +124,7 @@ async def get_current_weekly_top(chat_id: int) -> str | None:
     now = datetime.now(TIMEZONE)
     text, _ = _build_weekly_top_text(chat_id, week_start, now, save=False)
     if text:
-        text += "⏳ Итоги недели — в воскресенье в 23:59"
+        text += "⏳ Підсумки тижня - у неділю о 23:59"
     return text
 
 
