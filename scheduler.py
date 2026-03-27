@@ -19,7 +19,7 @@ TIMEZONE = pytz.timezone("Europe/Kyiv")
 
 async def send_hourly_quote(bot: Bot):
     """Отправляет цитату во все группы с 08:00 до 23:59 по Киеву."""
-    kyiv_now = datetime.now(ZoneInfo(TIMEZONE))
+    kyiv_now = datetime.now(TIMEZONE)
     if not (8 <= kyiv_now.hour <= 23):
         return
 
@@ -168,7 +168,7 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
 
     scheduler.add_job(
     send_hourly_quote,
-    CronTrigger(minute=0, timezone=ZoneInfo(TIMEZONE)),
+    CronTrigger(minute=0, timezone=TIMEZONE),
     args=[bot],
     id="hourly_quote",
     replace_existing=True,
