@@ -312,8 +312,8 @@ async def inline_handler(query: InlineQuery):
     results = [
         InlineQueryResultArticle(
             id="joke_check",
-            title="😂 Уместно ли?",
-            description="Узнай, уместна ли была шутка",
+            title="😂 Доречний був жарт?",
+            description="Дізнайся, чи був доречним жарт?",
             input_message_content=InputTextMessageContent(
                 message_text=random.choice(JOKE_YES) if random.random() < 0.5 else random.choice(JOKE_NO)
             ),
