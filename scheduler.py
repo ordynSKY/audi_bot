@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime, timedelta
 import random
-from zoneinfo import ZoneInfo
 from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -24,7 +23,7 @@ async def send_hourly_quote(bot: Bot):
         return
 
     quote = random.choice(QUOTES)
-    text = f"💬 *Цитата часа:*\n\n_{quote}_"
+    text = f"💬 *Цитата години:*\n\n_{quote}_"
 
     chats = get_all_chats()
     for chat_id in chats:
