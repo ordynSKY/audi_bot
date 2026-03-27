@@ -22,6 +22,7 @@ from levels import (
     make_progress_bar, get_message_xp, get_next_rank,
     XP_COOLDOWN_SECONDS
 )
+from responses import BMW_RESPONSES
 from scheduler import setup_scheduler, get_current_weekly_top
 
 import re
@@ -31,14 +32,7 @@ BMW_PATTERN = re.compile(
     re.IGNORECASE
 )
 
-BMW_RESPONSES = [
-    "Е, алло! Тут Audi-клуб, про таке не говорять 🙅‍♂️",
-    "Ти знаєш, що ти в Audi-чаті? 😤",
-    "А чи можна без цих слів? Тут діти... і ауді 🫣",
-    "Сказав би я тобі, але мене перепрограмують... 🤖",
-    "Ауді – це релігія. А ти тут з хернею 😡",
-    "404: марку не знайдено. Спробуй Audi ✅",
-]
+
 
 # ────
 logging.basicConfig(
