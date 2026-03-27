@@ -278,7 +278,7 @@ async def cmd_levels(message: Message):
 #   КОМАНДА: /howto
 # ════════════════════════════════════
 
-@dp.message(Command("help"))
+@dp.message(Command("howto"))
 async def cmd_help(message: Message):
     text = (
         f"🚗 <b>AUDI CLUB BOT — Допомога</b>\n"
