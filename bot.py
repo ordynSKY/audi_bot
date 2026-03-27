@@ -7,7 +7,7 @@ from datetime import datetime
 
 import pytz
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, ChatMemberUpdated
+from aiogram.types import Message, ChatMemberUpdated, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 from aiogram.filters import Command, CommandStart, ChatMemberUpdatedFilter, IS_NOT_MEMBER, MEMBER
 from aiogram.enums import ParseMode, ChatType
 from aiogram.client.default import DefaultBotProperties
@@ -17,6 +17,7 @@ from database import (
     update_user_level_rank, update_last_xp_time,
     get_top_users, update_streak
 )
+from jokes import JOKE_NO, JOKE_YES
 from levels import (
     calculate_level, get_rank, xp_progress,
     make_progress_bar, get_message_xp, get_next_rank,
@@ -301,6 +302,26 @@ async def cmd_help(message: Message):
     )
     await message.answer(text)
 
+
+# ════════════════════════════════════
+#   УМЕСТНА ЛИ ШУТКА
+# ════════════════════════════════════   
+
+@dp.inline_query()
+async def inline_handler(query: InlineQuery):
+    results = [
+        InlineQueryResultArticle(
+            id="joke_check",
+            title="😂 Уместно ли?",
+            description="Узнай, уместна ли была шутка",
+            input_message_content=InputTextMessageContent(
+                message_text=random.choice(JOKE_YES) if random.random() < 0.5 else random.choice(JOKE_NO)
+            ),
+            thumbnail_url="https://img.icons8.com/emoji/96/rolling-on-the-floor-laughing-emoji.png",
+        ),
+    ]
+
+    await query.answer(results, cache_time=0)  # cache_time=0 чтобы каждый раз новый результат
 
 # ════════════════════════════════════
 #   XP ЗА СООБЩЕНИЯ (ПОСЛЕ всех команд!)
