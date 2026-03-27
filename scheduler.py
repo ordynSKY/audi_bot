@@ -1,17 +1,37 @@
 import logging
 from datetime import datetime, timedelta
+import random
+from zoneinfo import ZoneInfo
+from aiogram import Bot
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
 
 from database import (
-    get_all_chat_ids, get_weekly_xp, get_user,
+    get_all_chat_ids, get_all_chats, get_weekly_xp, get_user,
     save_weekly_snapshot, get_last_weekly_snapshot
 )
+from quotes import QUOTES
 
 logger = logging.getLogger(__name__)
 
 TIMEZONE = pytz.timezone("Europe/Kyiv")
+
+async def send_hourly_quote(bot: Bot):
+    """Отправляет цитату во все группы с 08:00 до 23:59 по Киеву."""
+    kyiv_now = datetime.now(ZoneInfo(TIMEZONE))
+    if not (8 <= kyiv_now.hour <= 23):
+        return
+
+    quote = random.choice(QUOTES)
+    text = f"💬 *Цитата часа:*\n\n_{quote}_"
+
+    chats = get_all_chats()
+    for chat_id in chats:
+        try:
+            await bot.send_message(chat_id, text, parse_mode="Markdown")
+        except Exception as e:
+            logging.warning(f"Не удалось отправить цитату в {chat_id}: {e}")
 
 
 def get_week_start() -> str:
@@ -144,6 +164,14 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
         id="weekly_top",
         name="Еженедельный топ",
         replace_existing=True
+    )
+
+    scheduler.add_job(
+    send_hourly_quote,
+    CronTrigger(minute=0, timezone=ZoneInfo(TIMEZONE)),
+    args=[bot],
+    id="hourly_quote",
+    replace_existing=True,
     )
 
     logger.info("✅ Планировщик настроен: еженедельный топ в вс 23:59 (Kyiv)")

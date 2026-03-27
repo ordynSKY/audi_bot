@@ -299,3 +299,9 @@ def get_last_weekly_snapshot(chat_id: int):
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
+
+def get_all_chats() -> list[int]:
+    """Возвращает список уникальных chat_id из базы."""
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute("SELECT DISTINCT chat_id FROM users").fetchall()
+        return [row[0] for row in rows]
