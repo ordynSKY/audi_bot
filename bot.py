@@ -4,23 +4,24 @@ import os
 import time
 from datetime import datetime
 
+import pytz
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message
-from aiogram.filters import Command, CommandStart
+from aiogram.types import Message, ChatMemberUpdated
+from aiogram.filters import Command, CommandStart, ChatMemberUpdatedFilter, IS_NOT_MEMBER, MEMBER
 from aiogram.enums import ParseMode, ChatType
 from aiogram.client.default import DefaultBotProperties
 
 from database import (
     init_db, get_or_create_user, add_xp, get_user,
     update_user_level_rank, update_last_xp_time,
-    get_top_users
+    get_top_users, update_streak
 )
 from levels import (
     calculate_level, get_rank, xp_progress,
     make_progress_bar, get_message_xp, get_next_rank,
     XP_COOLDOWN_SECONDS
 )
-from scheduler import setup_scheduler
+from scheduler import setup_scheduler, get_current_weekly_top
 
 # ────
 logging.basicConfig(
@@ -30,9 +31,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 # ────
 
+TIMEZONE = pytz.timezone("Europe/Kyiv")
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("❌ BOT_TOKEN не установлен в переменных окружения!")
+    raise ValueError("❌ BOT_TOKEN не установлен!")
 
 bot = Bot(
     token=BOT_TOKEN,
@@ -41,9 +44,40 @@ bot = Bot(
 dp = Dispatcher()
 
 
-# ════
+# ════════════════════════════════════
+#   ПРИВЕТСТВИЕ НОВЫХ УЧАСТНИКОВ
+# ════════════════════════════════════
+
+@dp.chat_member(ChatMemberUpdatedFilter(IS_NOT_MEMBER >> MEMBER))
+async def on_new_member(event: ChatMemberUpdated):
+    """Приветствие нового участника группы"""
+    try:
+        user = event.new_chat_member.user
+        if user.is_bot:
+            return
+
+        name = f'<a href="tg://user?id={user.id}">{user.full_name or "друг"}</a>'
+
+        text = (
+            f"🚗 <b>Добро пожаловать в Audi-клуб!</b>\n\n"
+            f"Привет, {name}! 👋\n\n"
+            f"💬 Пиши в чат — получай XP\n"
+            f"📈 Прокачивай уровень и ранг\n"
+            f"🏆 Попадай в еженедельный топ\n\n"
+            f"Введи /help чтобы узнать все команды.\n"
+            f"Удачи на дорогах! 🏎️"
+        )
+
+        await bot.send_message(chat_id=event.chat.id, text=text)
+        logger.info(f"👋 Новый участник: {user.full_name} ({user.id}) в чате {event.chat.id}")
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка приветствия: {e}", exc_info=True)
+
+
+# ════════════════════════════════════
 #   КОМАНДА: /start
-# ════
+# ════════════════════════════════════
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
@@ -62,9 +96,9 @@ async def cmd_start(message: Message):
     await message.answer(text)
 
 
-# ════
+# ════════════════════════════════════
 #   КОМАНДА: /top
-# ════
+# ════════════════════════════════════
 
 @dp.message(Command("top"))
 async def cmd_top(message: Message):
@@ -111,9 +145,33 @@ async def cmd_top(message: Message):
         await message.answer("⚠️ Произошла ошибка. Попробуй позже.")
 
 
-# ════
+# ════════════════════════════════════
+#   КОМАНДА: /weekly
+# ════════════════════════════════════
+
+@dp.message(Command("weekly"))
+async def cmd_weekly(message: Message):
+    if message.chat.type == ChatType.PRIVATE:
+        await message.answer("📊 Эта команда работает только в группах!")
+        return
+
+    try:
+        text = await get_current_weekly_top(message.chat.id)
+
+        if not text:
+            await message.answer("😔 На этой неделе ещё никто не набрал XP.")
+            return
+
+        await message.answer(text)
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка в /weekly: {e}", exc_info=True)
+        await message.answer("⚠️ Произошла ошибка. Попробуй позже.")
+
+
+# ════════════════════════════════════
 #   КОМАНДА: /rank / /profile
-# ════
+# ════════════════════════════════════
 
 @dp.message(Command(commands=["rank", "profile", "stats"]))
 async def cmd_rank(message: Message):
@@ -127,7 +185,6 @@ async def cmd_rank(message: Message):
         username = message.from_user.username or ""
         full_name = message.from_user.full_name or "Аноним"
 
-        # Создаём юзера если его нет в БД
         user = get_or_create_user(user_id, chat_id, username, full_name)
 
         progress = xp_progress(user["xp"])
@@ -135,9 +192,11 @@ async def cmd_rank(message: Message):
         next_rank_info = get_next_rank(progress["level"])
         name = message.from_user.full_name or "Аноним"
 
-        # Позиция в топе
         top = get_top_users(chat_id, limit=1000)
         position = next((i + 1 for i, u in enumerate(top) if u["user_id"] == user_id), "?")
+
+        streak = user.get("streak_days", 0)
+        streak_text = f"🔥 Стрик: <b>{streak} дн.</b>\n" if streak > 0 else ""
 
         text = (
             f"👤 <b>{name}</b>\n"
@@ -146,6 +205,7 @@ async def cmd_rank(message: Message):
             f"⭐ Уровень: <b>{progress['level']}</b>\n"
             f"💬 Сообщений: <b>{user['messages']:,}</b>\n"
             f"🏆 Позиция в топе: <b>#{position}</b>\n"
+            f"{streak_text}"
             f"{'━' * 26}\n"
             f"📊 <b>Прогресс до ур. {progress['level'] + 1}:</b>\n"
             f"{bar} <code>{progress['percent']}%</code>\n"
@@ -168,9 +228,9 @@ async def cmd_rank(message: Message):
         await message.answer("⚠️ Произошла ошибка. Попробуй позже.")
 
 
-# ════
+# ════════════════════════════════════
 #   КОМАНДА: /levels
-# ════
+# ════════════════════════════════════
 
 @dp.message(Command("levels"))
 async def cmd_levels(message: Message):
@@ -190,8 +250,10 @@ async def cmd_levels(message: Message):
             f"{'═' * 28}\n\n"
             + "\n\n".join(lines)
             + f"\n\n{'═' * 28}\n"
-            f"💡 XP начисляется за сообщения (15-35 XP)\n"
-            f"⏱ Кулдаун между начислениями: 60 сек"
+            f"💡 XP зависит от типа и длины сообщения\n"
+            f"🔥 Стрик-бонус: +3 XP за каждый день подряд\n"
+            f"🌅 Первое сообщение дня: +15 XP\n"
+            f"⏱ Кулдаун: 60 сек"
         )
 
         await message.answer(text)
@@ -201,9 +263,9 @@ async def cmd_levels(message: Message):
         await message.answer("⚠️ Произошла ошибка. Попробуй позже.")
 
 
-# ════
+# ════════════════════════════════════
 #   КОМАНДА: /help
-# ════
+# ════════════════════════════════════
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
@@ -211,28 +273,30 @@ async def cmd_help(message: Message):
         f"🚗 <b>AUDI CLUB BOT — Помощь</b>\n"
         f"{'═' * 28}\n\n"
         f"<b>Основные команды:</b>\n"
-        f"• /top — 🏆 Топ участников\n"
+        f"• /top — 🏆 Топ участников (общий)\n"
+        f"• /weekly — 📊 Топ за текущую неделю\n"
         f"• /rank — 👤 Твой профиль и ранг\n"
         f"• /levels — 📋 Таблица всех рангов\n"
         f"• /help — ℹ️ Эта справка\n\n"
-        f"<b>Как работает система:</b>\n"
-        f"💬 Пиши в чат — получай XP\n"
-        f"📈 Набирай уровни — получай ранги\n"
-        f"🏆 Каждое воскресенье в 23:59 — еженедельный топ\n\n"
-        f"<b>Ранги:</b>\n"
-        f"от Новичка до Вечного Водителя 🌟\n"
-        f"Введи /levels чтобы увидеть все ранги"
+        f"<b>Как начисляется XP:</b>\n"
+        f"💬 Текст: 10-45 XP (зависит от длины)\n"
+        f"📷 Фото/видео: 15-30 XP\n"
+        f"🎤 Голосовые/кружочки: 20-35 XP\n"
+        f"😄 Стикеры/GIF: 5-15 XP\n"
+        f"🔥 Стрик: +3 XP за каждый день подряд (макс +30)\n"
+        f"🌅 Первое сообщение дня: +15 XP бонус\n"
+        f"⏱ Кулдаун: 60 сек между начислениями\n\n"
+        f"🏆 Еженедельный топ — каждое вс в 23:59"
     )
     await message.answer(text)
 
 
-# ════
+# ════════════════════════════════════
 #   XP ЗА СООБЩЕНИЯ (ПОСЛЕ всех команд!)
-# ════
+# ════════════════════════════════════
 
 @dp.message(F.chat.type.in_({ChatType.GROUP, ChatType.SUPERGROUP}))
 async def handle_group_message(message: Message):
-    """Начисление XP за активность в группе"""
     if not message.from_user or message.from_user.is_bot:
         return
 
@@ -244,14 +308,53 @@ async def handle_group_message(message: Message):
 
         user = get_or_create_user(user_id, chat_id, username, full_name)
 
+        # Кулдаун
         now = time.time()
         if now - user.get("last_xp_at", 0) < XP_COOLDOWN_SECONDS:
             return
 
-        xp_gain = get_message_xp()
-        add_xp(user_id, chat_id, xp_gain, reason="message")
+        # ── Стрик и первое сообщение дня ──
+        today_str = datetime.now(TIMEZONE).strftime("%Y-%m-%d")
+        last_active = user.get("last_active_date", "")
+        streak = user.get("streak_days", 0)
+        is_first_today = False
+
+        if last_active != today_str:
+            # Новый день
+            yesterday = (datetime.now(TIMEZONE) - __import__('datetime').timedelta(days=1)).strftime("%Y-%m-%d")
+            if last_active == yesterday:
+                streak += 1  # продолжаем стрик
+            else:
+                streak = 1   # стрик сброшен
+
+            is_first_today = True
+            update_streak(user_id, chat_id, streak, today_str, 1)
+        elif not user.get("first_msg_today", 0):
+            is_first_today = True
+            update_streak(user_id, chat_id, streak, today_str, 1)
+
+        # ── Умный XP ──
+        base_xp, streak_bonus, first_bonus, total_xp, detail = get_message_xp(
+            message=message,
+            streak_days=streak,
+            is_first_today=is_first_today
+        )
+
+        add_xp(user_id, chat_id, total_xp, reason=detail)
         update_last_xp_time(user_id, chat_id, now)
 
+        # ── Уведомление о первом сообщении дня ──
+        if is_first_today and streak > 1:
+            bonus_text = (
+                f"🌅 <b>Первое сообщение дня!</b>\n"
+                f"🔥 Стрик: <b>{streak} дн.</b> (+{streak_bonus} XP бонус)\n"
+                f"⭐ +{total_xp} XP"
+            )
+            await message.reply(bonus_text)
+            # Не дублируем level-up ниже если уже ответили
+            # (проверяем level-up всё равно)
+
+        # ── Проверка level-up ──
         updated_user = get_user(user_id, chat_id)
         new_level = calculate_level(updated_user["xp"])
         new_rank = get_rank(new_level)
@@ -284,9 +387,9 @@ async def handle_group_message(message: Message):
         logger.error(f"❌ Ошибка при начислении XP: {e}", exc_info=True)
 
 
-# ════
-#   СТАРТ БОТА
-# ════
+# ════════════════════════════════════
+#   СТАРТ
+# ════════════════════════════════════
 
 async def main():
     logger.info("🚀 Запуск Audi Club Bot...")

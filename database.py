@@ -17,58 +17,49 @@ def get_connection():
 
 
 def init_db():
-    """Инициализация базы данных — пересоздаёт таблицу users с правильным PK"""
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Проверяем, нужна ли миграция (старый PK только user_id)
-    cursor.execute("PRAGMA table_info(users)")
-    columns = {row["name"] for row in cursor.fetchall()}
+    # ── Миграция: проверяем PK таблицы users ──
+    cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    row = cursor.fetchone()
 
-    if columns:
-        # Таблица существует — проверяем PK
-        cursor.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
-        create_sql = cursor.fetchone()
-        if create_sql and "PRIMARY KEY (user_id, chat_id)" not in create_sql["sql"]:
-            logger.warning("⚠️ Миграция: пересоздаём таблицу users с PRIMARY KEY (user_id, chat_id)")
+    if row:
+        create_sql = row["sql"]
+        needs_migration = "PRIMARY KEY (user_id, chat_id)" not in create_sql
+
+        # Проверяем наличие новых колонок
+        cursor.execute("PRAGMA table_info(users)")
+        existing_cols = {r["name"] for r in cursor.fetchall()}
+        needs_new_cols = "streak_days" not in existing_cols
+
+        if needs_migration:
+            logger.warning("⚠️ Миграция: пересоздаём таблицу users с новой схемой")
             cursor.execute("ALTER TABLE users RENAME TO users_old")
-            cursor.execute("""
-                CREATE TABLE users (
-                    user_id     INTEGER NOT NULL,
-                    chat_id     INTEGER NOT NULL,
-                    username    TEXT,
-                    full_name   TEXT,
-                    xp          INTEGER DEFAULT 0,
-                    level       INTEGER DEFAULT 1,
-                    rank_title  TEXT DEFAULT 'Новичок',
-                    messages    INTEGER DEFAULT 0,
-                    last_xp_at  REAL DEFAULT 0,
-                    joined_at   TEXT DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (user_id, chat_id)
-                )
-            """)
+            _create_users_table(cursor)
+            # Переносим данные — новые колонки получат дефолты
             cursor.execute("""
                 INSERT OR IGNORE INTO users
-                SELECT * FROM users_old
+                    (user_id, chat_id, username, full_name, xp, level,
+                     rank_title, messages, last_xp_at, joined_at)
+                SELECT user_id, chat_id, username, full_name, xp, level,
+                       rank_title, messages, last_xp_at, joined_at
+                FROM users_old
             """)
             cursor.execute("DROP TABLE users_old")
             logger.info("✅ Миграция завершена")
+        elif needs_new_cols:
+            logger.warning("⚠️ Миграция: добавляем новые колонки в users")
+            for col, default in [
+                ("streak_days", "0"),
+                ("last_active_date", "''"),
+                ("first_msg_today", "0"),
+            ]:
+                if col not in existing_cols:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN {col} DEFAULT {default}")
+            logger.info("✅ Колонки добавлены")
     else:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id     INTEGER NOT NULL,
-                chat_id     INTEGER NOT NULL,
-                username    TEXT,
-                full_name   TEXT,
-                xp          INTEGER DEFAULT 0,
-                level       INTEGER DEFAULT 1,
-                rank_title  TEXT DEFAULT 'Новичок',
-                messages    INTEGER DEFAULT 0,
-                last_xp_at  REAL DEFAULT 0,
-                joined_at   TEXT DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (user_id, chat_id)
-            )
-        """)
+        _create_users_table(cursor)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS weekly_snapshots (
@@ -95,7 +86,6 @@ def init_db():
         )
     """)
 
-    # Индексы для скорости
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_chat_xp ON users(chat_id, xp DESC)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_xp_log_chat_date ON xp_log(chat_id, created_at)")
 
@@ -103,11 +93,31 @@ def init_db():
     conn.close()
 
 
+def _create_users_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id         INTEGER NOT NULL,
+            chat_id         INTEGER NOT NULL,
+            username        TEXT,
+            full_name       TEXT,
+            xp              INTEGER DEFAULT 0,
+            level           INTEGER DEFAULT 1,
+            rank_title      TEXT DEFAULT '🔩 Новичок',
+            messages        INTEGER DEFAULT 0,
+            last_xp_at      REAL DEFAULT 0,
+            streak_days     INTEGER DEFAULT 0,
+            last_active_date TEXT DEFAULT '',
+            first_msg_today INTEGER DEFAULT 0,
+            joined_at       TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, chat_id)
+        )
+    """)
+
+
 def get_or_create_user(user_id: int, chat_id: int, username: str, full_name: str):
     conn = get_connection()
     try:
         cursor = conn.cursor()
-
         cursor.execute(
             "SELECT * FROM users WHERE user_id = ? AND chat_id = ?",
             (user_id, chat_id)
@@ -141,7 +151,6 @@ def add_xp(user_id: int, chat_id: int, xp: int, reason: str = "message"):
     conn = get_connection()
     try:
         cursor = conn.cursor()
-
         cursor.execute("""
             UPDATE users
             SET xp = xp + ?, messages = messages + 1
@@ -179,6 +188,21 @@ def update_last_xp_time(user_id: int, chat_id: int, timestamp: float):
             UPDATE users SET last_xp_at = ?
             WHERE user_id = ? AND chat_id = ?
         """, (timestamp, user_id, chat_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_streak(user_id: int, chat_id: int, streak_days: int, date_str: str, first_msg: int):
+    """Обновить стрик и дату активности"""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users
+            SET streak_days = ?, last_active_date = ?, first_msg_today = ?
+            WHERE user_id = ? AND chat_id = ?
+        """, (streak_days, date_str, first_msg, user_id, chat_id))
         conn.commit()
     finally:
         conn.close()
@@ -255,5 +279,23 @@ def save_weekly_snapshot(entries: list):
                 entry["week_start"], entry["week_end"], entry["position"]
             ))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def get_last_weekly_snapshot(chat_id: int):
+    """Получить последний сохранённый еженедельный снапшот для сравнения"""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        # Берём самый свежий week_end для этого чата
+        cursor.execute("""
+            SELECT * FROM weekly_snapshots
+            WHERE chat_id = ? AND week_end = (
+                SELECT MAX(week_end) FROM weekly_snapshots WHERE chat_id = ?
+            )
+            ORDER BY position ASC
+        """, (chat_id, chat_id))
+        return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
