@@ -192,7 +192,7 @@ def update_last_xp_time(user_id: int, chat_id: int, timestamp: float):
         conn.close()
 
 
-def update_streak(user_id: int, chat_id: int, streak_days: int, date_str: str, first_msg: int):
+def update_streak(user_id: int, chat_id: int, streak_days: int, date_str: str):
     """Обновить стрик и дату активности"""
     conn = get_connection()
     try:
@@ -201,7 +201,7 @@ def update_streak(user_id: int, chat_id: int, streak_days: int, date_str: str, f
             UPDATE users
             SET streak_days = ?, last_active_date = ?
             WHERE user_id = ? AND chat_id = ?
-        """, (streak_days, date_str, first_msg, user_id, chat_id))
+        """, (streak_days, date_str, user_id, chat_id))
         conn.commit()
     finally:
         conn.close()
