@@ -105,12 +105,11 @@ CONTENT_XP = {
 # Бонусы
 STREAK_BONUS_PER_DAY = 3        # +3 XP за каждый день стрика
 STREAK_MAX_BONUS = 30           # макс бонус от стрика
-FIRST_MESSAGE_BONUS = 15        # бонус за первое сообщение дня
 
 
-def get_message_xp(message=None, streak_days: int = 0, is_first_today: bool = False) -> tuple:
+def get_message_xp(message=None, streak_days: int = 0) -> tuple:
     """
-    Возвращает (base_xp, streak_bonus, first_msg_bonus, total_xp, reason_detail)
+    Возвращает (base_xp, streak_bonus, total_xp, reason_detail)
     """
     # Определяем тип контента
     content_type = "default"
@@ -144,18 +143,14 @@ def get_message_xp(message=None, streak_days: int = 0, is_first_today: bool = Fa
     # Streak бонус
     streak_bonus = min(streak_days * STREAK_BONUS_PER_DAY, STREAK_MAX_BONUS)
 
-    # Бонус за первое сообщение дня
-    first_bonus = FIRST_MESSAGE_BONUS if is_first_today else 0
 
-    total = base_xp + streak_bonus + first_bonus
+    total = base_xp + streak_bonus
 
     detail = content_type
     if streak_bonus > 0:
         detail += f"+streak({streak_days}d)"
-    if first_bonus > 0:
-        detail += "+first_today"
 
-    return base_xp, streak_bonus, first_bonus, total, detail
+    return base_xp, streak_bonus, total, detail
 
 
 # ════

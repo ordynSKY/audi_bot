@@ -264,7 +264,6 @@ async def cmd_levels(message: Message):
             + f"\n\n{'═' * 28}\n"
             f"💡 XP залежить від типу та довжини повідомлення\n"
             f"🔥 Стрик-бонус: +3 XP за кожен день поспіль\n"
-            f"🌅 Перше повідомлення дня: +15 XP\n"
             f"⏱ Кулдаун: 60 сек"
         )
 
@@ -296,7 +295,6 @@ async def cmd_help(message: Message):
         f"🎤 Голосові/кружочки: 20-35 XP\n"
         f"😄 Стікери/GIF: 5-15 XP\n"
         f"🔥 Стрик: +3 XP за кожен день поспіль (макс +30)\n"
-        f"🌅 Перше повідомлення дня: +15 XP бонус\n"
         f"⏱ Кулдаун: 60 сек між нарахуванням\n\n"
         f"🏆 Щотижневий топ — кожну неділю в 23:59"
     )
@@ -352,46 +350,29 @@ async def handle_group_message(message: Message):
         if now - user.get("last_xp_at", 0) < XP_COOLDOWN_SECONDS:
             return
 
-        # ── Стрик и первое сообщение дня ──
+# ── Стрик ──
         today_str = datetime.now(TIMEZONE).strftime("%Y-%m-%d")
         last_active = user.get("last_active_date", "")
         streak = user.get("streak_days", 0)
-        is_first_today = False
 
         if last_active != today_str:
-            # Новый день
             yesterday = (datetime.now(TIMEZONE) - __import__('datetime').timedelta(days=1)).strftime("%Y-%m-%d")
             if last_active == yesterday:
-                streak += 1  # продолжаем стрик
+                streak += 1
             else:
-                streak = 1   # стрик сброшен
-
-            is_first_today = True
-            update_streak(user_id, chat_id, streak, today_str, 1)
-        elif not user.get("first_msg_today", 0):
-            is_first_today = True
-            update_streak(user_id, chat_id, streak, today_str, 1)
+                streak = 1
+            update_streak(user_id, chat_id, streak, today_str)
 
         # ── Умный XP ──
-        base_xp, streak_bonus, first_bonus, total_xp, detail = get_message_xp(
+        base_xp, streak_bonus, total_xp, detail = get_message_xp(
             message=message,
             streak_days=streak,
-            is_first_today=is_first_today
         )
 
         add_xp(user_id, chat_id, total_xp, reason=detail)
         update_last_xp_time(user_id, chat_id, now)
 
-# ── Уведомление о первом сообщении дня ──
-        if is_first_today and streak > 1:
-            bonus_text = (
-                f"🌅 <b>Перше повідомлення дня!</b>\n"
-                f"🔥 Стрик: <b>{streak} дн.</b> (+{streak_bonus} XP бонус)\n"
-                f"⭐ +{total_xp} XP"
-            )
-            await message.reply(bonus_text)
-            # Не дублируем level-up ниже если уже ответили
-            # (проверяем level-up всё равно)
+
 
         # ── Проверка level-up ──
         updated_user = get_user(user_id, chat_id)

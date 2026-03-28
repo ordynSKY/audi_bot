@@ -53,7 +53,6 @@ def init_db():
             for col, default in [
                 ("streak_days", "0"),
                 ("last_active_date", "''"),
-                ("first_msg_today", "0"),
             ]:
                 if col not in existing_cols:
                     cursor.execute(f"ALTER TABLE users ADD COLUMN {col} DEFAULT {default}")
@@ -108,7 +107,6 @@ def _create_users_table(cursor):
             last_xp_at      REAL DEFAULT 0,
             streak_days     INTEGER DEFAULT 0,
             last_active_date TEXT DEFAULT '',
-            first_msg_today INTEGER DEFAULT 0,
             joined_at       TEXT DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (user_id, chat_id)
         )
@@ -201,7 +199,7 @@ def update_streak(user_id: int, chat_id: int, streak_days: int, date_str: str, f
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE users
-            SET streak_days = ?, last_active_date = ?, first_msg_today = ?
+            SET streak_days = ?, last_active_date = ?
             WHERE user_id = ? AND chat_id = ?
         """, (streak_days, date_str, first_msg, user_id, chat_id))
         conn.commit()
