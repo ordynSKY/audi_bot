@@ -46,39 +46,39 @@ CVT_PATTERN = re.compile(
     r'\b(варіатор|вариатор|варик|cvt)\b',
     re.IGNORECASE
 )
-SCOOTER_RESPONSES = re.compile(
+SCOOTER_PATTERN = re.compile(
     r'\b(самокат|самокате|самокатчик|самокатчики|самокаты)\b',
     re.IGNORECASE
 )
-QUATTRO_RESPONSES = re.compile(
+QUATTRO_PATTERN = re.compile(
     r'\b(кватро|quattro)\b',
     re.IGNORECASE
 )
-HALDEX_RESPONSES = re.compile(
+HALDEX_PATTERN = re.compile(
     r'\b(haldex|халдекс)\b',
     re.IGNORECASE
 )
-TORSEN_RESPONSES = re.compile(
+TORSEN_PATTERN = re.compile(
     r'\b(торсен|torsen)\b',
     re.IGNORECASE
 )
-DIESEL_RESPONSES = re.compile(
+DIESEL_PATTERN = re.compile(
     r'\b(дизель|дизеле|diesel|дізель|дізелі|соляра|солярку)\b',
     re.IGNORECASE
 )
-A6C6_RESPONSES = re.compile(
+A6C6_PATTERN = re.compile(
     r'\b(a6c6|а6с6)\b',
     re.IGNORECASE
 )
-GATHERING_RESPONSES = re.compile(
+GATHERING_PATTERN = re.compile(
     r'\b(сходка|сходку|сходке)\b',
     re.IGNORECASE
 )
-CRASHED_CAR_RESPONSES = re.compile(
+CRASHED_CAR_PATTERN = re.compile(
     r'\b(бітки|біток|бітке|биток|битке|битки|битков|бітків)\b',
     re.IGNORECASE
 )
-SPARS_RESPONSES = re.compile(
+SPARS_PATTERN = re.compile(
     r'\b(лонжерон|лонжерони|лонжеронах|лонжеронамі|лонжеронами|ланжерон|ланжерони|ланжеронах|ланжеронамі|ланжеронами)\b',
     re.IGNORECASE
 )
@@ -392,23 +392,23 @@ async def handle_group_message(message: Message):
                 await message.reply(random.choice(CVT_RESPONSES))
             if BMW_PATTERN.search(txt):
                 await message.reply(random.choice(BMW_RESPONSES))
-            if SCOOTER_RESPONSES.search(txt):
+            if SCOOTER_PATTERN.search(txt):
                 await message.reply(random.choice(SCOOTER_RESPONSES))
-            if QUATTRO_RESPONSES.search(txt):
+            if QUATTRO_PATTERN.search(txt):
                 await message.reply(random.choice(QUATTRO_RESPONSES))
-            if HALDEX_RESPONSES.search(txt):
+            if HALDEX_PATTERN.search(txt):
                 await message.reply(random.choice(HALDEX_RESPONSES))
-            if TORSEN_RESPONSES.search(txt):
+            if TORSEN_PATTERN.search(txt):
                 await message.reply(random.choice(TORSEN_RESPONSES))
-            if DIESEL_RESPONSES.search(txt):
+            if DIESEL_PATTERN.search(txt):
                 await message.reply(random.choice(DIESEL_RESPONSES))
-            if A6C6_RESPONSES.search(txt):
+            if A6C6_PATTERN.search(txt):
                 await message.reply(random.choice(A6C6_RESPONSES))
-            if GATHERING_RESPONSES.search(txt):
+            if GATHERING_PATTERN.search(txt):
                 await message.reply(random.choice(GATHERING_RESPONSES))
-            if CRASHED_CAR_RESPONSES.search(txt):
+            if CRASHED_CAR_PATTERN.search(txt):
                 await message.reply(random.choice(CRASHED_CAR_RESPONSES))
-            if SPARS_RESPONSES.search(txt):
+            if SPARS_PATTERN.search(txt):
                 await message.reply(random.choice(SPARS_RESPONSES))
         
         user_id = message.from_user.id
