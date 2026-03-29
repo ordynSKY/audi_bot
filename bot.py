@@ -23,17 +23,65 @@ from levels import (
     make_progress_bar, get_message_xp, get_next_rank,
     XP_COOLDOWN_SECONDS
 )
-from responses import BMW_RESPONSES
+from responses import BMW_RESPONSES, CVT_RESPONSES, MOTUL_RESPONSES, OIL_RESPONSES, SCOOTER_RESPONSES, QUATTRO_RESPONSES, HALDEX_RESPONSES, TORSEN_RESPONSES, DIESEL_RESPONSES, A6C6_RESPONSES, GATHERING_RESPONSES, CRASHED_CAR_RESPONSES, SPARS_RESPONSES
 from scheduler import setup_scheduler, get_current_weekly_top
 
 import re
 
 BMW_PATTERN = re.compile(
-    r'\b(bmw|бмв|бэмвэ|бэха|бумер|бимер|бэмэвэ|bmv)\b',
+    r'\b(bmw|бмв|бэмвэ|бэха|бумер|бимер|бэмэвэ|bmv|бэнвэ)\b',
     re.IGNORECASE
 )
 
-
+# После BMW_PATTERN добавить:
+OIL_PATTERN = re.compile(
+    r'\b(масло|масла|маслу|маслом|олія|олію|олії|oil|мастило)\b',
+    re.IGNORECASE
+)
+MOTUL_PATTERN = re.compile(
+    r'\b(мотюль|motul|мотуль)\b',
+    re.IGNORECASE
+)
+CVT_PATTERN = re.compile(
+    r'\b(варіатор|вариатор|варик|cvt)\b',
+    re.IGNORECASE
+)
+SCOOTER_RESPONSES = re.compile(
+    r'\b(самокат|самокате|самокатчик|самокатчики|самокаты)\b',
+    re.IGNORECASE
+)
+QUATTRO_RESPONSES = re.compile(
+    r'\b(кватро|quattro)\b',
+    re.IGNORECASE
+)
+HALDEX_RESPONSES = re.compile(
+    r'\b(haldex|халдекс)\b',
+    re.IGNORECASE
+)
+TORSEN_RESPONSES = re.compile(
+    r'\b(торсен|torsen)\b',
+    re.IGNORECASE
+)
+DIESEL_RESPONSES = re.compile(
+    r'\b(дизель|дизеле|diesel|дізель|дізелі|соляра|солярку)\b',
+    re.IGNORECASE
+)
+A6C6_RESPONSES = re.compile(
+    r'\b(a6c6|а6с6)\b',
+    re.IGNORECASE
+)
+GATHERING_RESPONSES = re.compile(
+    r'\b(сходка|сходку|сходке)\b',
+    re.IGNORECASE
+)
+CRASHED_CAR_RESPONSES = re.compile(
+    r'\b(бітки|біток|бітке|биток|битке|битки|битков|бітків)\b',
+    re.IGNORECASE
+)
+SPARS_RESPONSES = re.compile(
+    r'\b(лонжерон|лонжерони|лонжеронах|лонжеронамі|лонжеронами|ланжерон|ланжерони|ланжеронах|ланжеронамі|ланжеронами)\b',
+    re.IGNORECASE
+)
 
 # ────
 logging.basicConfig(
@@ -334,9 +382,34 @@ async def handle_group_message(message: Message):
 
     try:
         # --- BMW фильтр ---
-        if message.text and BMW_PATTERN.search(message.text):
-            response = random.choice(BMW_RESPONSES)
-            await message.reply(response)
+        if message.text:
+            txt = message.text
+            if MOTUL_PATTERN.search(txt):
+                await message.reply(random.choice(MOTUL_RESPONSES))
+            elif OIL_PATTERN.search(txt):
+                await message.reply(random.choice(OIL_RESPONSES))
+            if CVT_PATTERN.search(txt):
+                await message.reply(random.choice(CVT_RESPONSES))
+            if BMW_PATTERN.search(txt):
+                await message.reply(random.choice(BMW_RESPONSES))
+            if SCOOTER_RESPONSES.search(txt):
+                await message.reply(random.choice(SCOOTER_RESPONSES))
+            if QUATTRO_RESPONSES.search(txt):
+                await message.reply(random.choice(QUATTRO_RESPONSES))
+            if HALDEX_RESPONSES.search(txt):
+                await message.reply(random.choice(HALDEX_RESPONSES))
+            if TORSEN_RESPONSES.search(txt):
+                await message.reply(random.choice(TORSEN_RESPONSES))
+            if DIESEL_RESPONSES.search(txt):
+                await message.reply(random.choice(DIESEL_RESPONSES))
+            if A6C6_RESPONSES.search(txt):
+                await message.reply(random.choice(A6C6_RESPONSES))
+            if GATHERING_RESPONSES.search(txt):
+                await message.reply(random.choice(GATHERING_RESPONSES))
+            if CRASHED_CAR_RESPONSES.search(txt):
+                await message.reply(random.choice(CRASHED_CAR_RESPONSES))
+            if SPARS_RESPONSES.search(txt):
+                await message.reply(random.choice(SPARS_RESPONSES))
         
         user_id = message.from_user.id
         chat_id = message.chat.id
