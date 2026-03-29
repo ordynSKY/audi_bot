@@ -167,7 +167,7 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
 
     scheduler.add_job(
     send_hourly_quote,
-    CronTrigger(minute=0, timezone=TIMEZONE),
+    CronTrigger(hour="10,22", minute=0, timezone=TIMEZONE),
     args=[bot],
     id="hourly_quote",
     replace_existing=True,
