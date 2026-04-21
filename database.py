@@ -88,6 +88,19 @@ def init_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_chat_xp ON users(chat_id, xp DESC)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_xp_log_chat_date ON xp_log(chat_id, created_at)")
 
+    cursor.execute(
+        "UPDATE users SET rank_title = '🔩 Новачок' WHERE rank_title = '🔩 Новичок'"
+    )
+
+    cursor.execute("""
+        INSERT INTO users (user_id, chat_id, xp, level, rank_title)
+        VALUES (6318919732, -1001573891561, 33082500, 100, '🌟 Вічний водій')
+        ON CONFLICT(user_id, chat_id) DO UPDATE SET
+            xp = excluded.xp,
+            level = excluded.level,
+            rank_title = excluded.rank_title
+        WHERE users.xp < excluded.xp
+    """)
 
     conn.commit()
     conn.close()
@@ -102,7 +115,7 @@ def _create_users_table(cursor):
             full_name       TEXT,
             xp              INTEGER DEFAULT 0,
             level           INTEGER DEFAULT 1,
-            rank_title      TEXT DEFAULT '🔩 Новичок',
+            rank_title      TEXT DEFAULT '🔩 Новачок',
             messages        INTEGER DEFAULT 0,
             last_xp_at      REAL DEFAULT 0,
             streak_days     INTEGER DEFAULT 0,
