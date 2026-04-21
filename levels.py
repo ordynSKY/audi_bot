@@ -4,6 +4,9 @@ import random
 #   XP формула
 # ════
 
+MAX_LEVEL = 100
+
+
 def xp_required_for_level(level: int) -> int:
     return level ** 2 * 100 + level * 50
 
@@ -19,7 +22,7 @@ def calculate_level(xp: int) -> int:
     level = 1
     while xp >= total_xp_for_level(level + 1):
         level += 1
-        if level >= 100:
+        if level >= MAX_LEVEL:
             break
     return level
 

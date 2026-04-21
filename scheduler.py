@@ -1,7 +1,9 @@
 import logging
+import os
 from datetime import datetime, timedelta
 import random
 from aiogram import Bot
+from aiogram.types import FSInputFile
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -11,10 +13,31 @@ from database import (
     save_weekly_snapshot, get_last_weekly_snapshot
 )
 from quotes import QUOTES
+from ads import ADS
 
 logger = logging.getLogger(__name__)
 
 TIMEZONE = pytz.timezone("Europe/Kyiv")
+MAIN_CHAT_ID = int(os.getenv("MAIN_CHAT_ID", "-1001573891561"))
+
+async def send_ads(bot: Bot):
+    """Публикует все рекламные посты подряд в основной чат."""
+    order = list(range(len(ADS)))
+    random.shuffle(order)
+
+    for idx in order:
+        ad = ADS[idx]
+        try:
+            photo = FSInputFile(str(ad["image"]))
+            await bot.send_photo(
+                chat_id=MAIN_CHAT_ID,
+                photo=photo,
+                caption=ad["caption"],
+            )
+            logger.info(f"📢 Реклама отправлена в {MAIN_CHAT_ID} (ad index {idx})")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при отправке рекламы (ad {idx}): {e}", exc_info=True)
+
 
 async def send_hourly_quote(bot: Bot):
     """Отправляет цитату во все группы с 08:00 до 23:59 по Киеву."""
@@ -171,6 +194,14 @@ def setup_scheduler(bot) -> AsyncIOScheduler:
     args=[bot],
     id="hourly_quote",
     replace_existing=True,
+    )
+
+    scheduler.add_job(
+        send_ads,
+        CronTrigger(hour="10,15,20", minute=0, timezone=TIMEZONE),
+        args=[bot],
+        id="ad_post",
+        replace_existing=True,
     )
 
     logger.info("✅ Планировщик настроен: еженедельный топ в вс 23:59 (Kyiv)")

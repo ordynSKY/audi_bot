@@ -21,7 +21,7 @@ from jokes import JOKE_NO, JOKE_YES
 from levels import (
     calculate_level, get_rank, xp_progress,
     make_progress_bar, get_message_xp, get_next_rank,
-    XP_COOLDOWN_SECONDS
+    XP_COOLDOWN_SECONDS, MAX_LEVEL
 )
 from responses import BMW_RESPONSES
 from scheduler import setup_scheduler, get_current_weekly_top
@@ -219,11 +219,20 @@ async def cmd_rank(message: Message):
             f"🏆 Позиція у топі: <b>#{position}</b>\n"
             f"{streak_text}"
             f"{'━' * 26}\n"
-            f"📊 <b>Прогрес до рів. {progress['level'] + 1}:</b>\n"
-            f"{bar} <code>{progress['percent']}%</code>\n"
-            f"XP: <code>{progress['xp_in_level']}</code> / <code>{progress['xp_needed']}</code>\n"
-            f"Усьго XP: <code>{user['xp']:,}</code>\n"
         )
+
+        if progress["level"] >= MAX_LEVEL:
+            text += (
+                f"🏆 <b>Максимальний рівень досягнуто!</b>\n"
+                f"Усього XP: <code>{user['xp']:,}</code>\n"
+            )
+        else:
+            text += (
+                f"📊 <b>Прогрес до рів. {progress['level'] + 1}:</b>\n"
+                f"{bar} <code>{progress['percent']}%</code>\n"
+                f"XP: <code>{progress['xp_in_level']}</code> / <code>{progress['xp_needed']}</code>\n"
+                f"Усьго XP: <code>{user['xp']:,}</code>\n"
+            )
 
         if next_rank_info:
             next_rank_level, next_rank_title = next_rank_info
