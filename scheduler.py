@@ -20,8 +20,10 @@ logger = logging.getLogger(__name__)
 TIMEZONE = pytz.timezone("Europe/Kyiv")
 MAIN_CHAT_ID = int(os.getenv("MAIN_CHAT_ID", "-1001573891561"))
 
-async def send_ads(bot: Bot):
-    """Публикует все рекламные посты подряд в основной чат."""
+async def send_ads(bot: Bot, chat_id: int | None = None):
+    """Публикует все рекламные посты подряд. По умолчанию — в основной чат."""
+    target = chat_id if chat_id is not None else MAIN_CHAT_ID
+
     order = list(range(len(ADS)))
     random.shuffle(order)
 
@@ -30,11 +32,11 @@ async def send_ads(bot: Bot):
         try:
             photo = FSInputFile(str(ad["image"]))
             await bot.send_photo(
-                chat_id=MAIN_CHAT_ID,
+                chat_id=target,
                 photo=photo,
                 caption=ad["caption"],
             )
-            logger.info(f"📢 Реклама отправлена в {MAIN_CHAT_ID} (ad index {idx})")
+            logger.info(f"📢 Реклама отправлена в {target} (ad index {idx})")
         except Exception as e:
             logger.error(f"❌ Ошибка при отправке рекламы (ad {idx}): {e}", exc_info=True)
 

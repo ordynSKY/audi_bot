@@ -24,7 +24,9 @@ from levels import (
     XP_COOLDOWN_SECONDS, MAX_LEVEL
 )
 from responses import BMW_RESPONSES
-from scheduler import setup_scheduler, get_current_weekly_top
+from scheduler import setup_scheduler, get_current_weekly_top, send_ads
+
+ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "959515134"))
 
 import re
 
@@ -311,8 +313,23 @@ async def cmd_help(message: Message):
 
 
 # ════════════════════════════════════
+#   КОМАНДА: /testads (только админ)
+# ════════════════════════════════════
+
+@dp.message(Command("testads"))
+async def cmd_testads(message: Message):
+    if message.from_user.id != ADMIN_USER_ID:
+        return
+    try:
+        await send_ads(bot, chat_id=message.chat.id)
+    except Exception as e:
+        logger.error(f"❌ Ошибка в /testads: {e}", exc_info=True)
+        await message.answer("⚠️ Помилка при відправці тестових постів.")
+
+
+# ════════════════════════════════════
 #   УМЕСТНА ЛИ ШУТКА
-# ════════════════════════════════════   
+# ════════════════════════════════════
 
 @dp.inline_query()
 async def inline_handler(query: InlineQuery):
