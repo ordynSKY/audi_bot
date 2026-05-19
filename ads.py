@@ -41,8 +41,8 @@ ADS = [
             "🚘Volkswagen: (Jetta, Passat, Golf)\n\n"
             "📌м.Київ\n"
             "📩Всі деталі - @kulibin8\n"
-            "📷Instagram: <a href=\"https://www.instagram.com/kulibin.ambient?igsh=d3pobHFpNW1mNjBm&amp;utm_source=qr\">kulibin.ambient</a>\n"
-            "🎵TikTok: <a href=\"https://www.tiktok.com/@kulibin.ambient\">kulibin.ambient</a>\n\n"
+            "📷Instagram: https://www.instagram.com/kulibin.ambient?igsh=d3pobHFpNW1mNjBm&amp;utm_source=qr\n"
+            "🎵TikTok: www.tiktok.com/@kulibin.ambient\n\n"
             "💸Знижка по промокоду «audi club» 5%"
         ),
     },
