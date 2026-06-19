@@ -58,4 +58,20 @@ ADS = [
             "💸 Знижка по промокоду «audi club ua» від 10%"
         ),
     },
+    {
+        "image": ADS_DIR / "ad4.jpg",
+        "caption": (
+            "Чекаємо @audi_club_u_a до стін сервісу\n"
+            "«unlim.service»за якісним ремонтом та "
+            "найкращими цінами!\n\n"
+            "А за промокодом «AUDI_T.O.» ви отримаєте \n"
+            "7% знижки на роботи 😉🤘🏻\n\n"
+            "📍 Київ, Велика кільцева 4г\n"
+            "🗺 Карта: https://maps.app.goo.gl/FBUqTQun3EXPUpVt7?g_st=ic\n\n"
+            "📲 0631490527\n"
+            "📲 Михайло\n"
+            "Instagram:\n\n"
+            "https://www.instagram.com/unlim.service?igsh=MWc1Z2FuZWFrbHhxMw==\n\n"
+        ),
+    },
 ]
