@@ -25,28 +25,6 @@ ADS = [
         ),
     },
     {
-        "image": ADS_DIR / "ad3.jpg",
-        "caption": (
-            "Встановлення ambient light під ключ\n"
-            "✔️Створення гарного інтер'єру\n"
-            "✔️Встановлення триває всього декілька годин\n"
-            "✔️ Регулювання яскравості та кольору\n"
-            "✔️ Безліч режимів роботи\n\n"
-            "Встановлення шумо-віброізоляції під ключ\n"
-            "✔️Зменшення шуму та вібрацій у салоні\n"
-            "✔️Комфортні поїздки без зайвих звуків\n"
-            "✔️Покращення акустики та теплоізоляції\n"
-            "✔️Якісні матеріали та професійний монтаж\n\n"
-            "🚘Audi: (a4/5 b9, a6/7 c7)\n"
-            "🚘Volkswagen: (Jetta, Passat, Golf)\n\n"
-            "📌м.Київ\n"
-            "📩Всі деталі - @kulibin8\n"
-            "📷Instagram: https://www.instagram.com/kulibin.ambient?igsh=d3pobHFpNW1mNjBm&amp;utm_source=qr\n"
-            "🎵TikTok: www.tiktok.com/@kulibin.ambient\n\n"
-            "💸Знижка по промокоду «audi club» 5%"
-        ),
-    },
-    {
         "image": ADS_DIR / "ad2.jpg",
         "caption": (
             "🚗 DRACAR — автозапчастини для вашого авто\n"
